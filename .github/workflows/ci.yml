@@ -1,6 +1,6 @@
 # Fork-only validation recipe. Never part of the upstream feature PR.
 # The product checkout is the immutable published feature commit, not this QA branch.
-name: Provider bridge regression QA
+name: Provider native QA
 on:
   workflow_dispatch:
 permissions:
@@ -15,14 +15,14 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: "0"
       RUST_TEST_THREADS: "1"
       WGPU_BACKEND: vulkan
-      EXPECTED_SOURCE_SHA: "63be89b16b4cd33c7c0bd67bdf2e9e10108e6618"
+      EXPECTED_SOURCE_SHA: "c598d96bcda28ca18fe198a3bbc9df7ccef81122"
       CARGO_CACHE_AUTO_CLEAN_FREQUENCY: "never"
       NEXTEST_TEST_THREADS: "1"
       RUST_BACKTRACE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: "63be89b16b4cd33c7c0bd67bdf2e9e10108e6618"
+          ref: "c598d96bcda28ca18fe198a3bbc9df7ccef81122"
           persist-credentials: false
       - name: Prepare runtime environment before tool setup
         shell: bash
@@ -73,42 +73,18 @@ jobs:
         run: |
           set -euo pipefail
           timeout 55m cargo clippy --locked -p gridcraft-ui-egui -p gridcraft-web --all-targets --keep-going -j2 -- -D warnings
-      - name: "Prove provider overwrite regression fails before the routing fix"
-        shell: bash
-        run: |
-          set -euo pipefail
-          timeout 30m python3 - <<'PY'
-          import os,pathlib,subprocess
-          p=pathlib.Path('crates/ui-egui/src/backstage.rs')
-          original=p.read_bytes()
-          text=original.decode('utf-8')
-          fixed=' || provider_bound {'
-          assert text.count(fixed)==1
-          mutated=text.replace(fixed,' || (provider_bound && false) {',1)
-          try:
-              p.write_text(mutated)
-              result=subprocess.run(['cargo','test','--locked','-p','gridcraft-ui-egui','--lib','backstage::tests::backstage_save_retains_the_bound_provider_overwrite_destination','-j2','--','--exact','--test-threads=1'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,env=dict(os.environ,CARGO_TERM_COLOR='never'),timeout=1500)
-              (pathlib.Path(os.environ['EVIDENCE_DIR'])/'backstage-save-negative.log').write_text(result.stdout)
-              expected='test backstage::tests::backstage_save_retains_the_bound_provider_overwrite_destination ... FAILED'
-              assert result.returncode!=0 and expected in result.stdout, 'Expected actual overwrite-destination regression failure: '+result.stdout[-10000:]
-              print('Confirmed Backstage overwrite regression fails without provider-bound Save routing')
-              print(result.stdout[-5000:])
-          finally:
-              p.write_bytes(original)
-          assert p.read_bytes()==original
-          subprocess.run(['git','diff','--exit-code','--','crates/ui-egui/src/backstage.rs'],check=True)
-          PY
-      - name: "All affected UI and web library tests on restored published source"
-        shell: bash
-        run: |
-          set -euo pipefail
-          timeout 45m cargo test --locked -p gridcraft-ui-egui -p gridcraft-web --lib -j2 -- --test-threads=1
       - name: "Actual browser WASM package"
         shell: bash
         run: |
           set -euo pipefail
           timeout 40m cargo check --locked -p gridcraft-web --target wasm32-unknown-unknown -j2
-      - name: Verify tested source identity
+      - name: "Inspect official Spanish Save As labels with the existing native renderer"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 25m cargo run --locked -p gridcraft-ui-egui --example snapshot -- --dark --language es --dialog 'backstage={"page":"saveAs"}' --size 1440x900 --scale 1 "$EVIDENCE_DIR/gridcraft-save-as-local.png"
+          timeout 5m cargo run --locked -p gridcraft-ui-egui --example snapshot -- --dark --language es --file-provider-preview --dialog 'backstage={"page":"saveAs"}' --size 1440x900 --scale 1 "$EVIDENCE_DIR/gridcraft-save-as-provider.png"
+      - name: Verify native evidence and source identity
         shell: bash
         run: |
           python3 - <<'PY'
@@ -121,8 +97,8 @@ jobs:
           fonts_sha = subprocess.check_output(['git','-C','craft-fonts','rev-parse','HEAD'],text=True).strip() if pathlib.Path('craft-fonts/.git').exists() else None
           assert fonts_sha == "b076417b5880bd4154bd22f00695b1d28c6bea83"
           rustc = subprocess.check_output(['rustc','-Vv'],text=True)
-          files = []
-          assert len(files) == 0
+          files = ["$EVIDENCE_DIR/gridcraft-save-as-local.png","$EVIDENCE_DIR/gridcraft-save-as-provider.png"]
+          assert len(files) == 2
           proof = []
           for raw in files:
               source = pathlib.Path(os.path.expandvars(raw))
@@ -133,15 +109,17 @@ jobs:
               target = out / source.name
               if source.resolve() != target.resolve(): shutil.copy2(source,target)
               proof.append(dict(file=target.name,width=width,height=height,bytes=len(data),sha256=hashlib.sha256(data).hexdigest()))
-          provenance = dict(source_sha=actual,fonts_sha=fonts_sha,rustc=rustc,workflow_sha=os.environ.get('GITHUB_SHA'),run_id=os.environ.get('GITHUB_RUN_ID'),renderer='focused bridge regression validation; no new image capture',browser_backend_e2e=False,images=proof)
+          provenance = dict(source_sha=actual,fonts_sha=fonts_sha,rustc=rustc,workflow_sha=os.environ.get('GITHUB_SHA'),run_id=os.environ.get('GITHUB_RUN_ID'),renderer='repository native offscreen renderer; synthetic resources',browser_backend_e2e=False,images=proof)
           (out / 'provenance.json').write_text(json.dumps(provenance,indent=2)+chr(10))
           print(json.dumps(provenance))
           PY
-      - name: Upload tested source provenance
+      - name: Upload two native captures and provenance
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: provider-checks-gridcraft-63be89b16b4c
+          name: provider-ui-gridcraft-c598d96bcda2
           path: |
+            ${{ runner.temp }}/provider-evidence/gridcraft-save-as-local.png
+            ${{ runner.temp }}/provider-evidence/gridcraft-save-as-provider.png
             ${{ runner.temp }}/provider-evidence/provenance.json
           if-no-files-found: error
           retention-days: 14
