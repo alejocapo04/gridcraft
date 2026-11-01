@@ -1,0 +1,10 @@
+{
+  "source_sha": "63be89b16b4cd33c7c0bd67bdf2e9e10108e6618",
+  "fonts_sha": "b076417b5880bd4154bd22f00695b1d28c6bea83",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "workflow_sha": "147825b6d357590a3b31b94b0b3991d304d63727",
+  "run_id": "41295082734",
+  "renderer": "focused bridge regression validation; no new image capture",
+  "browser_backend_e2e": false,
+  "images": []
+}
