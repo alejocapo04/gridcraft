@@ -1,0 +1,25 @@
+{
+  "source_sha": "8aac775b335b16bf64b358e5f23be10f8bebf46c",
+  "fonts_sha": "b076417b5880bd4154bd22f00695b1d28c6bea83",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "workflow_sha": "be0b8673ce1404b224dbd0d3bd4543e32008ec56",
+  "run_id": "41292359404",
+  "renderer": "repository native offscreen renderer; synthetic resources",
+  "browser_backend_e2e": false,
+  "images": [
+    {
+      "file": "gridcraft-off.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 111797,
+      "sha256": "ef54e03e55fe7572a692fcd3e46e946ee8d70a63cd0ba6352094ab807e21c496"
+    },
+    {
+      "file": "gridcraft-on.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 80572,
+      "sha256": "aa01a9dda9836ec4ad477e2e951288818452a7fe86ce588592f6e17caa7842c7"
+    }
+  ]
+}
